@@ -2,8 +2,10 @@
 
 namespace Catalog;
 
+use Common\EventType;
 use Common\Persistence\Database;
 use Common\Render;
+use Common\Stream\Stream;
 
 final class CatalogApplication
 {
@@ -21,24 +23,29 @@ final class CatalogApplication
             );
             Database::persist($product);
 
+            Stream::produce(EventType::ProductCreated, [
+                'id' => $product->id(),
+                'name' => $product->name()
+            ]);
+
             header('Location: /listProducts');
             exit;
         }
 
         include __DIR__ . '/../Common/header.php';
 
-        ?>
+?>
         <h1>Create a product</h1>
         <form action="/createProduct" method="post">
             <div class="form-group">
                 <label for="name" class="control-label">Name:</label>
-                <input type="text" name="name" id="name" class="form-control"/>
+                <input type="text" name="name" id="name" class="form-control" />
             </div>
             <div class="form-group">
                 <button type="submit" class="btn btn-primary">Create</button>
             </div>
         </form>
-        <?php
+<?php
 
         include __DIR__ . '/../Common/footer.php';
     }
