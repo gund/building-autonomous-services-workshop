@@ -1,10 +1,13 @@
 <?php
+
 declare(strict_types=1);
 
 namespace Purchase;
 
+use Common\EventType;
 use Common\Persistence\Database;
 use Common\Render;
+use Common\Stream\Stream;
 use Common\Web\FlashMessage;
 use Common\Web\HttpApi;
 
@@ -22,7 +25,11 @@ final class PurchaseApplication
                 ? PurchaseOrderId::fromString($_POST['purchaseOrderId'])
                 : PurchaseOrderId::create();
 
-            $purchaseOrder = new PurchaseOrder($purchaseOrderId, $_POST['productId'], (int)$_POST['quantity']);
+            $purchaseOrder = new PurchaseOrder(
+                $purchaseOrderId,
+                $_POST['productId'],
+                (int)$_POST['quantity'],
+            );
 
             Database::persist($purchaseOrder);
 
@@ -32,11 +39,12 @@ final class PurchaseApplication
             exit;
         }
 
-        $products = array_values((array)HttpApi::fetchDecodedJsonResponse('http://catalog_web/listProducts'));
+        // $products = array_values((array)HttpApi::fetchDecodedJsonResponse('http://catalog_web/listProducts'));
+        $products = Database::retrieveAll(Product::class);
 
         include __DIR__ . '/../Common/header.php';
 
-        ?>
+?>
         <h1>Create a purchase order</h1>
         <form action="/createPurchaseOrder" method="post">
             <div class="form-group">
@@ -46,9 +54,9 @@ final class PurchaseApplication
                 <select name="productId" id="productId" class="form-control productId">
                     <?php
                     foreach ($products as $product) {
-                        ?>
-                        <option value="<?php echo $product->productId; ?>"><?php echo htmlspecialchars($product->name); ?></option>
-                        <?php
+                    ?>
+                        <option value="<?php echo $product->id(); ?>"><?php echo htmlspecialchars($product->name()); ?></option>
+                    <?php
                     }
                     ?>
                 </select>
@@ -57,7 +65,7 @@ final class PurchaseApplication
                 <label for="quantity">
                     Quantity
                 </label>
-                <input type="text" name="quantity" id="quantity" value="" class="form-control quantity" title="Provide a quantity"/>
+                <input type="text" name="quantity" id="quantity" value="" class="form-control quantity" title="Provide a quantity" />
             </div>
             <div class="btn-group">
                 <button type="submit" class="btn btn-primary">Order</button>
@@ -78,12 +86,22 @@ final class PurchaseApplication
     public function receiveGoodsController(): void
     {
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            /** @var PurchaseOrder */
             $purchaseOrder = Database::retrieve(PurchaseOrder::class, $_POST['purchaseOrderId']);
             $purchaseOrder->markAsReceived();
 
             FlashMessage::add(FlashMessage::SUCCESS, 'Marked purchase order as received: ' . $_POST['purchaseOrderId']);
 
             Database::persist($purchaseOrder);
+
+            Stream::produce(
+                EventType::PurchaseGoodsReceived,
+                [
+                    'id' => $purchaseOrder->id(),
+                    'productId' => $purchaseOrder->productId(),
+                    'quantity' => $purchaseOrder->quantity(),
+                ]
+            );
 
             header('Location: /listPurchaseOrders');
             exit;
@@ -97,7 +115,7 @@ final class PurchaseApplication
         });
 
         if (\count($openPurchaseOrders) > 0) {
-            ?>
+        ?>
             <form method="post" action="/receiveGoods">
                 <p>
                     <label for="purchaseOrderId">Receive goods for order: </label>
@@ -106,9 +124,9 @@ final class PurchaseApplication
 
                         foreach ($openPurchaseOrders as $purchaseOrder) {
                             /** @var PurchaseOrder $purchaseOrder */
-                            ?>
+                        ?>
                             <option value="<?php echo $purchaseOrder->id(); ?>"><?php echo $purchaseOrder->id(); ?></option>
-                            <?php
+                        <?php
                         }
                         ?>
                     </select>
@@ -117,12 +135,12 @@ final class PurchaseApplication
                     <button type="submit" class="btn btn-primary">Receive</button>
                 </p>
             </form>
-            <?php
+        <?php
         } else {
-            ?>
+        ?>
             <p>There's no open purchase order, so you can't receive anything at this moment.</p>
             <p>You could of course <a href="/createPurchaseOrder">Create a Purchase order</a>.</p>
-            <?php
+<?php
         }
 
         include __DIR__ . '/../Common/footer.php';

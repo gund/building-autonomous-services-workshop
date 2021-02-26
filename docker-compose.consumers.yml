@@ -1,26 +1,74 @@
 version: '2'
 
 services:
-    projector:
-        build: docker/php-cli
-        image: matthiasnoback/building_autonomous_services_php_cli
-        restart: on-failure
-        env_file: docker/.env
-        user: ${HOST_UID}:${HOST_GID}
-        volumes:
-            - ./:/opt:cached
-        command: php src/Common/projector.php
-        networks:
-            - default
+  projector:
+    build: docker/php-cli
+    image: matthiasnoback/building_autonomous_services_php_cli
+    restart: on-failure
+    env_file: docker/.env
+    user: ${HOST_UID}:${HOST_GID}
+    volumes:
+      - ./:/opt:cached
+    command: php src/Common/projector.php
+    networks:
+      - default
 
-    process_manager:
-        build: docker/php-cli
-        image: matthiasnoback/building_autonomous_services_php_cli
-        restart: on-failure
-        env_file: docker/.env
-        user: ${HOST_UID}:${HOST_GID}
-        volumes:
-            - ./:/opt:cached
-        command: php src/Common/process_manager.php
-        networks:
-            - default
+  purchase_projector:
+    build: docker/php-cli
+    image: matthiasnoback/building_autonomous_services_php_cli
+    restart: on-failure
+    env_file: docker/.env
+    user: ${HOST_UID}:${HOST_GID}
+    volumes:
+      - ./:/opt:cached
+    command: php src/Purchase/projector.php
+    networks:
+      - default
+
+  dashboard_projector:
+    build: docker/php-cli
+    image: matthiasnoback/building_autonomous_services_php_cli
+    restart: on-failure
+    env_file: docker/.env
+    user: ${HOST_UID}:${HOST_GID}
+    volumes:
+      - ./:/opt:cached
+    command: php src/Dashboard/projector.php
+    networks:
+      - default
+
+  process_manager:
+    build: docker/php-cli
+    image: matthiasnoback/building_autonomous_services_php_cli
+    restart: on-failure
+    env_file: docker/.env
+    user: ${HOST_UID}:${HOST_GID}
+    volumes:
+      - ./:/opt:cached
+    command: php src/Common/process_manager.php
+    networks:
+      - default
+
+  stock_process_manager:
+    build: docker/php-cli
+    image: matthiasnoback/building_autonomous_services_php_cli
+    restart: on-failure
+    env_file: docker/.env
+    user: ${HOST_UID}:${HOST_GID}
+    volumes:
+      - ./:/opt:cached
+    command: php src/Stock/process_manager.php
+    networks:
+      - default
+
+  sales_process_manager:
+    build: docker/php-cli
+    image: matthiasnoback/building_autonomous_services_php_cli
+    restart: on-failure
+    env_file: docker/.env
+    user: ${HOST_UID}:${HOST_GID}
+    volumes:
+      - ./:/opt:cached
+    command: php src/Sales/process_manager.php
+    networks:
+      - default

@@ -1,12 +1,16 @@
 <?php
+
 declare(strict_types=1);
 
 namespace Sales;
 
+use Common\EventType;
 use Common\Persistence\Database;
 use Common\Render;
+use Common\Stream\Stream;
 use Common\Web\FlashMessage;
 use Common\Web\HttpApi;
+use Purchase\PurchaseOrderId;
 
 final class SalesApplication
 {
@@ -26,6 +30,12 @@ final class SalesApplication
 
             Database::persist($salesOrder);
 
+            Stream::produce(EventType::SalesOrderCreated, [
+                'id' => $salesOrder->id(),
+                'productId' => $salesOrder->productId(),
+                'quantity' => $salesOrder->quantity(),
+            ]);
+
             FlashMessage::add(FlashMessage::SUCCESS, 'Created sales order ' . $salesOrderId);
 
             header('Location: /listSalesOrders');
@@ -36,7 +46,7 @@ final class SalesApplication
 
         include __DIR__ . '/../Common/header.php';
 
-        ?>
+?>
         <h1>Create a sales order</h1>
         <form action="/createSalesOrder" method="post">
             <div class="form-group">
@@ -46,9 +56,9 @@ final class SalesApplication
                 <select name="productId" id="productId" class="form-control productId">
                     <?php
                     foreach ($products as $product) {
-                        ?>
+                    ?>
                         <option value="<?php echo $product->productId; ?>"><?php echo htmlspecialchars($product->name); ?></option>
-                        <?php
+                    <?php
                     }
                     ?>
                 </select>
@@ -57,7 +67,7 @@ final class SalesApplication
                 <label for="quantity">
                     Quantity
                 </label>
-                <input type="text" name="quantity" id="quantity" value="" class="form-control quantity" title="Provide a quantity"/>
+                <input type="text" name="quantity" id="quantity" value="" class="form-control quantity" title="Provide a quantity" />
             </div>
             <div class="btn-group">
                 <button type="submit" class="btn btn-primary">Order</button>
@@ -78,6 +88,7 @@ final class SalesApplication
     public function deliverSalesOrderController(): void
     {
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            /** @var SalesOrder */
             $salesOrder = Database::retrieve(SalesOrder::class, $_POST['salesOrderId']);
 
             // TODO make this judgement based on actual stock levels (assignment 05)
@@ -88,6 +99,15 @@ final class SalesApplication
             FlashMessage::add(FlashMessage::SUCCESS, 'Delivered sales order ' . $_POST['salesOrderId']);
 
             Database::persist($salesOrder);
+
+            Stream::produce(
+                EventType::SalesOrderDelivered,
+                [
+                    'id' => $salesOrder->id(),
+                    'productId' => $salesOrder->productId(),
+                    'quantity' => $salesOrder->quantity(),
+                ]
+            );
 
             header('Location: /listSalesOrders');
             exit;
@@ -101,7 +121,7 @@ final class SalesApplication
         });
 
         if (\count($openSalesOrders) > 0) {
-            ?>
+        ?>
             <form method="post" action="/deliverSalesOrder">
                 <p>
                     <label for="salesOrderId">Deliver sales order: </label>
@@ -110,9 +130,9 @@ final class SalesApplication
 
                         foreach ($openSalesOrders as $salesOrder) {
                             /** @var SalesOrder $salesOrder */
-                            ?>
+                        ?>
                             <option value="<?php echo $salesOrder->id(); ?>"><?php echo $salesOrder->id(); ?></option>
-                            <?php
+                        <?php
                         }
                         ?>
                     </select>
@@ -121,12 +141,12 @@ final class SalesApplication
                     <button type="submit" class="btn btn-primary">Deliver</button>
                 </p>
             </form>
-            <?php
+        <?php
         } else {
-            ?>
+        ?>
             <p>There's no open sales order, so you can't deliver anything at this moment.</p>
             <p>You could of course <a href="/createSalesOrder">Create a Sales order</a>.</p>
-            <?php
+<?php
         }
 
         include __DIR__ . '/../Common/footer.php';
